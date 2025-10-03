@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/elisescu/tty-share/proxy"
 	"github.com/elisescu/tty-share/server"
@@ -18,7 +19,7 @@ import (
 // complex linker flags that could set the version from the outside
 var version string = "2.4.1"
 
-func createServer(frontListenAddress string, frontendPath string, pty server.PTYHandler, sessionID string, allowTunneling bool, crossOrigin bool, baseUrlPath string) *server.TTYServer {
+func createServer(frontListenAddress string, frontendPath string, pty server.PTYHandler, sessionID string, allowTunneling bool, crossOrigin bool, baseUrlPath string, timeout time.Duration) *server.TTYServer {
 	config := ttyServer.TTYServerConfig{
 		FrontListenAddress: frontListenAddress,
 		FrontendPath:       frontendPath,
@@ -27,6 +28,7 @@ func createServer(frontListenAddress string, frontendPath string, pty server.PTY
 		AllowTunneling:     allowTunneling,
 		CrossOrigin:        crossOrigin,
 		BaseUrlPath:        baseUrlPath,
+		Timeout:            timeout,
 	}
 
 	server := ttyServer.NewTTYServer(config)
@@ -85,6 +87,7 @@ Flags:
 	headless := flag.Bool("headless", false, "[s] Don't expect an interactive terminal at stdin")
 	headlessCols := flag.Int("headless-cols", 80, "[s] Number of cols for the allocated pty when running headless")
 	headlessRows := flag.Int("headless-rows", 25, "[s] Number of rows for the allocated pty when running headless")
+	timeout := flag.Int("timeout", 0, "[s] Seconds to wait for a client. Zero means wait forever.")
 	detachKeys := flag.String("detach-keys", "ctrl-o,ctrl-c", "[c] Sequence of keys to press for closing the connection. Supported: https://godoc.org/github.com/moby/term#pkg-variables.")
 	allowTunneling := flag.Bool("A", false, "[s] Allow clients to create a TCP tunnel")
 	tunnelConfig := flag.String("L", "", "[c] TCP tunneling addresses: local_port:remote_host:remote_port. The client will listen on local_port for TCP connections, and will forward those to the from the server side to remote_host:remote_port")
@@ -209,7 +212,7 @@ Flags:
 		pty = &nilPTY{}
 	}
 
-	server := createServer(*listenAddress, *frontendPath, pty, sessionID, *allowTunneling, *crossOrgin, sanitizedBaseUrlPath)
+	server := createServer(*listenAddress, *frontendPath, pty, sessionID, *allowTunneling, *crossOrgin, sanitizedBaseUrlPath, time.Duration(*timeout)*time.Second)
 	if cols, rows, e := ptyMaster.GetWinSize(); e == nil {
 		server.WindowSize(cols, rows)
 	}

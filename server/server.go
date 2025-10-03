@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -43,6 +44,7 @@ type TTYServerConfig struct {
 	AllowTunneling     bool
 	CrossOrigin        bool
 	BaseUrlPath        string
+	Timeout            time.Duration
 }
 
 // TTYServer represents the instance of a tty server
@@ -288,6 +290,13 @@ func (server *TTYServer) handleWithTemplateHtml(responseWriter http.ResponseWrit
 }
 
 func (server *TTYServer) Run() (err error) {
+	if server.config.Timeout > 0 {
+		time.AfterFunc(server.config.Timeout, func() {
+			if server.session.ttyProtoConnections.Len() == 0 {
+				server.Stop()
+			}
+		})
+	}
 	err = server.httpServer.ListenAndServe()
 	log.Debug("Server finished")
 	return
