@@ -45,6 +45,7 @@ type TTYServerConfig struct {
 	CrossOrigin        bool
 	BaseUrlPath        string
 	Timeout            time.Duration
+	Seats              int
 }
 
 // TTYServer represents the instance of a tty server
@@ -161,6 +162,12 @@ func (server *TTYServer) handleTTYWebsocket(w http.ResponseWriter, r *http.Reque
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
+
+	if server.session.ttyProtoConnections.Len() >= server.config.Seats {
+		log.Warnf("All seats used (%d)", server.config.Seats)
+		return
+	}
+
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
