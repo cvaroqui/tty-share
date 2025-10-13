@@ -46,6 +46,7 @@ type TTYServerConfig struct {
 	BaseUrlPath        string
 	Timeout            time.Duration
 	Seats              int
+	HangUp             bool
 }
 
 // TTYServer represents the instance of a tty server
@@ -192,6 +193,10 @@ func (server *TTYServer) handleTTYWebsocket(w http.ResponseWriter, r *http.Reque
 	// On a new connection, ask for a refresh/redraw of the terminal app
 	server.config.PTY.Refresh()
 	server.session.HandleWSConnection(conn)
+
+	if server.config.HangUp && server.session.ttyProtoConnections.Len() == 0 {
+		server.httpServer.Close()
+	}
 }
 
 func (server *TTYServer) handleTunnelWebsocket(w http.ResponseWriter, r *http.Request) {
