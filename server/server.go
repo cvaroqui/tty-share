@@ -164,7 +164,7 @@ func (server *TTYServer) handleTTYWebsocket(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if server.session.ttyProtoConnections.Len() >= server.config.Seats {
+	if server.config.Seats > 0 && server.session.ttyProtoConnections.Len() >= server.config.Seats {
 		log.Warnf("All seats used (%d)", server.config.Seats)
 		return
 	}
