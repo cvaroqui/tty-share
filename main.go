@@ -20,7 +20,7 @@ import (
 // complex linker flags that could set the version from the outside
 var version string = "2.4.1"
 
-func createServer(frontListener net.Listener, frontendPath string, pty server.PTYHandler, sessionID string, allowTunneling bool, crossOrigin bool, baseUrlPath string, timeout time.Duration, seats int, hangup bool) *server.TTYServer {
+func createServer(frontListener net.Listener, frontendPath string, pty server.PTYHandler, sessionID string, allowTunneling bool, crossOrigin bool, baseUrlPath string, greetTimeout time.Duration, seats int, hangup bool) *server.TTYServer {
 	config := ttyServer.TTYServerConfig{
 		FrontListener:  frontListener,
 		FrontendPath:   frontendPath,
@@ -29,7 +29,7 @@ func createServer(frontListener net.Listener, frontendPath string, pty server.PT
 		AllowTunneling: allowTunneling,
 		CrossOrigin:    crossOrigin,
 		BaseUrlPath:    baseUrlPath,
-		Timeout:        timeout,
+		GreetTimeout:   greetTimeout,
 		Seats:          seats,
 		HangUp:         hangup,
 	}
@@ -90,7 +90,7 @@ Flags:
 	headless := flag.Bool("headless", false, "[s] Don't expect an interactive terminal at stdin")
 	headlessCols := flag.Int("headless-cols", 80, "[s] Number of cols for the allocated pty when running headless")
 	headlessRows := flag.Int("headless-rows", 25, "[s] Number of rows for the allocated pty when running headless")
-	timeout := flag.Int("timeout", 0, "[s] Seconds to wait for a client. Zero means wait forever.")
+	greetTimeout := flag.Duration("greet-timeout", 0, "[s] Seconds to wait for a client. Zero means wait forever.")
 	seats := flag.Int("seats", 0, "[s] The maximum number of concurrent sessions. Zero means as many as possible.")
 	hangup := flag.Bool("hangup", false, "[s] Stop serving after the last session close.")
 	detachKeys := flag.String("detach-keys", "ctrl-o,ctrl-c", "[c] Sequence of keys to press for closing the connection. Supported: https://godoc.org/github.com/moby/term#pkg-variables.")
@@ -228,7 +228,7 @@ Flags:
 		pty = &nilPTY{}
 	}
 
-	server := createServer(listener, *frontendPath, pty, sessionID, *allowTunneling, *crossOrgin, sanitizedBaseUrlPath, time.Duration(*timeout)*time.Second, *seats, *hangup)
+	server := createServer(listener, *frontendPath, pty, sessionID, *allowTunneling, *crossOrgin, sanitizedBaseUrlPath, time.Duration(*greetTimeout)*time.Second, *seats, *hangup)
 	if cols, rows, e := ptyMaster.GetWinSize(); e == nil {
 		server.WindowSize(cols, rows)
 	}

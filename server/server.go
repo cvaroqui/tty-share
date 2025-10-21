@@ -44,7 +44,7 @@ type TTYServerConfig struct {
 	AllowTunneling bool
 	CrossOrigin    bool
 	BaseUrlPath    string
-	Timeout        time.Duration
+	GreetTimeout   time.Duration
 	Seats          int
 	HangUp         bool
 }
@@ -302,8 +302,8 @@ func (server *TTYServer) handleWithTemplateHtml(responseWriter http.ResponseWrit
 }
 
 func (server *TTYServer) Run() (err error) {
-	if server.config.Timeout > 0 {
-		time.AfterFunc(server.config.Timeout, func() {
+	if server.config.GreetTimeout > 0 {
+		time.AfterFunc(server.config.GreetTimeout, func() {
 			if server.session.ttyProtoConnections.Len() == 0 {
 				server.Stop()
 			}
