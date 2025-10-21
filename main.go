@@ -94,6 +94,7 @@ Flags:
 	seats := flag.Int("seats", 0, "[s] The maximum number of concurrent sessions. Zero means as many as possible.")
 	hangup := flag.Bool("hangup", false, "[s] Stop serving after the last session close.")
 	detachKeys := flag.String("detach-keys", "ctrl-o,ctrl-c", "[c] Sequence of keys to press for closing the connection. Supported: https://godoc.org/github.com/moby/term#pkg-variables.")
+	insecure := flag.Bool("k", false, "[s] Accept to run with a proxy presenting a invalid certificate.")
 	allowTunneling := flag.Bool("A", false, "[s] Allow clients to create a TCP tunnel")
 	tunnelConfig := flag.String("L", "", "[c] TCP tunneling addresses: local_port:remote_host:remote_port. The client will listen on local_port for TCP connections, and will forward those to the from the server side to remote_host:remote_port")
 	crossOrgin := flag.Bool("cross-origin", false, "[s] Allow cross origin requests to the server")
@@ -134,7 +135,7 @@ Flags:
 	if len(args) == 1 {
 		connectURL := args[0]
 
-		client := newTtyShareClient(connectURL, *detachKeys, tunnelConfig)
+		client := newTtyShareClient(connectURL, *detachKeys, tunnelConfig, *insecure)
 
 		err := client.Run()
 		if err != nil {
@@ -163,7 +164,7 @@ Flags:
 	sessionID := ""
 	publicURL := ""
 	if *publicSession {
-		proxy, err := proxy.NewProxyConnection(*listenAddress, *proxyServerAddress, *noTLS)
+		proxy, err := proxy.NewProxyConnection(*listenAddress, *proxyServerAddress, *noTLS, *insecure)
 		if err != nil {
 			log.Errorf("Can't connect to the proxy: %s\n", err.Error())
 			return
