@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"crypto/x509"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -10,15 +12,19 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/elisescu/tty-share/proxy"
 	"github.com/elisescu/tty-share/server"
 	ttyServer "github.com/elisescu/tty-share/server"
-	log "github.com/sirupsen/logrus"
 )
 
 // This should be updated manually. Most of distro packagers prefer to build golang without
 // complex linker flags that could set the version from the outside
 var version string = "2.4.1"
+
+const exitCodex509UnknownAuthorityError = 2
+const exitCodeGenericError = 1
 
 func createServer(frontListener net.Listener, frontendPath string, pty server.PTYHandler, sessionID string, allowTunneling bool, crossOrigin bool, baseUrlPath string, greetTimeout time.Duration, seats int, hangup bool) *server.TTYServer {
 	config := ttyServer.TTYServerConfig{
@@ -139,7 +145,13 @@ Flags:
 
 		err := client.Run()
 		if err != nil {
+			if errors.As(err, &x509.UnknownAuthorityError{}) || errors.As(err, &x509.HostnameError{}) {
+				_, suffix, _ := strings.Cut(err.Error(), ": ")
+				fmt.Printf("%s\n", suffix)
+				os.Exit(exitCodex509UnknownAuthorityError)
+			}
 			fmt.Printf("Cannot connect to the remote session. Make sure the URL points to a valid tty-share session.\n")
+			os.Exit(exitCodeGenericError)
 		}
 		fmt.Printf("\ntty-share disconnected\n\n")
 		return
@@ -148,7 +160,7 @@ Flags:
 	// tty-share works as a server, from here on
 	if !isStdinTerminal() && !*headless {
 		fmt.Printf("Input not a tty\n")
-		os.Exit(1)
+		os.Exit(exitCodeGenericError)
 	}
 
 	// allocate a free port if port is zero
