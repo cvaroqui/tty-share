@@ -45,6 +45,7 @@ type TTYServerConfig struct {
 	CrossOrigin        bool
 	BaseUrlPath        string
 	GreetTimeout       time.Duration
+	Seats              int
 }
 
 // TTYServer represents the instance of a tty server
@@ -161,6 +162,20 @@ func (server *TTYServer) handleTTYWebsocket(w http.ResponseWriter, r *http.Reque
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
+
+	switch server.config.Seats {
+	case 0:
+		// unlimited
+	case -1:
+		log.Warnf("No longer accepting clients")
+		return
+	default:
+		if server.session.ttyProtoConnections.Len() >= server.config.Seats {
+			log.Warnf("All seats used (%d)", server.config.Seats)
+			return
+		}
+	}
+
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -185,6 +200,12 @@ func (server *TTYServer) handleTTYWebsocket(w http.ResponseWriter, r *http.Reque
 	// On a new connection, ask for a refresh/redraw of the terminal app
 	server.config.PTY.Refresh()
 	server.session.HandleWSConnection(conn)
+
+	// When a connection ends, close the server if
+	// there are no more connections and we can't accept new ones.
+	if server.config.Seats < 0 && server.session.ttyProtoConnections.Len() == 0 {
+		server.httpServer.Close()
+	}
 }
 
 func (server *TTYServer) handleTunnelWebsocket(w http.ResponseWriter, r *http.Request) {
@@ -294,6 +315,9 @@ func (server *TTYServer) Run() (err error) {
 		time.AfterFunc(server.config.GreetTimeout, func() {
 			if server.session.ttyProtoConnections.Len() == 0 {
 				server.Stop()
+			} else {
+				// stop accepting new connections
+				server.config.Seats = -1
 			}
 		})
 	}

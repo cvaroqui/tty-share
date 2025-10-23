@@ -19,7 +19,7 @@ import (
 // complex linker flags that could set the version from the outside
 var version string = "2.4.1"
 
-func createServer(frontListenAddress string, frontendPath string, pty server.PTYHandler, sessionID string, allowTunneling bool, crossOrigin bool, baseUrlPath string, greetTimeout time.Duration) *server.TTYServer {
+func createServer(frontListenAddress string, frontendPath string, pty server.PTYHandler, sessionID string, allowTunneling bool, crossOrigin bool, baseUrlPath string, greetTimeout time.Duration, seats int) *server.TTYServer {
 	config := ttyServer.TTYServerConfig{
 		FrontListenAddress: frontListenAddress,
 		FrontendPath:       frontendPath,
@@ -29,6 +29,7 @@ func createServer(frontListenAddress string, frontendPath string, pty server.PTY
 		CrossOrigin:        crossOrigin,
 		BaseUrlPath:        baseUrlPath,
 		GreetTimeout:       greetTimeout,
+		Seats:              seats,
 	}
 
 	server := ttyServer.NewTTYServer(config)
@@ -88,6 +89,7 @@ Flags:
 	headlessCols := flag.Int("headless-cols", 80, "[s] Number of cols for the allocated pty when running headless")
 	headlessRows := flag.Int("headless-rows", 25, "[s] Number of rows for the allocated pty when running headless")
 	greetTimeout := flag.Duration("greet-timeout", 0, "[s] Maximum duration clients are accepted. Set to 0 for no limit.")
+	seats := flag.Int("seats", 0, "[s] The number of allowed proxy connections. Zero means as many as possible.")
 	detachKeys := flag.String("detach-keys", "ctrl-o,ctrl-c", "[c] Sequence of keys to press for closing the connection. Supported: https://godoc.org/github.com/moby/term#pkg-variables.")
 	allowTunneling := flag.Bool("A", false, "[s] Allow clients to create a TCP tunnel")
 	tunnelConfig := flag.String("L", "", "[c] TCP tunneling addresses: local_port:remote_host:remote_port. The client will listen on local_port for TCP connections, and will forward those to the from the server side to remote_host:remote_port")
@@ -212,7 +214,7 @@ Flags:
 		pty = &nilPTY{}
 	}
 
-	server := createServer(*listenAddress, *frontendPath, pty, sessionID, *allowTunneling, *crossOrgin, sanitizedBaseUrlPath, *greetTimeout)
+	server := createServer(*listenAddress, *frontendPath, pty, sessionID, *allowTunneling, *crossOrgin, sanitizedBaseUrlPath, *greetTimeout, *seats)
 	if cols, rows, e := ptyMaster.GetWinSize(); e == nil {
 		server.WindowSize(cols, rows)
 	}
