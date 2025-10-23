@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -19,17 +20,17 @@ import (
 // complex linker flags that could set the version from the outside
 var version string = "2.4.1"
 
-func createServer(frontListenAddress string, frontendPath string, pty server.PTYHandler, sessionID string, allowTunneling bool, crossOrigin bool, baseUrlPath string, greetTimeout time.Duration, seats int) *server.TTYServer {
+func createServer(frontListener net.Listener, frontendPath string, pty server.PTYHandler, sessionID string, allowTunneling bool, crossOrigin bool, baseUrlPath string, greetTimeout time.Duration, seats int) *server.TTYServer {
 	config := ttyServer.TTYServerConfig{
-		FrontListenAddress: frontListenAddress,
-		FrontendPath:       frontendPath,
-		PTY:                pty,
-		SessionID:          sessionID,
-		AllowTunneling:     allowTunneling,
-		CrossOrigin:        crossOrigin,
-		BaseUrlPath:        baseUrlPath,
-		GreetTimeout:       greetTimeout,
-		Seats:              seats,
+		FrontListener:  frontListener,
+		FrontendPath:   frontendPath,
+		PTY:            pty,
+		SessionID:      sessionID,
+		AllowTunneling: allowTunneling,
+		CrossOrigin:    crossOrigin,
+		BaseUrlPath:    baseUrlPath,
+		GreetTimeout:   greetTimeout,
+		Seats:          seats,
 	}
 
 	server := ttyServer.NewTTYServer(config)
@@ -77,7 +78,7 @@ Flags:
 	}
 	commandArgs := flag.String("args", "", "[s] The command arguments")
 	logFileName := flag.String("logfile", "-", "The name of the file to log")
-	listenAddress := flag.String("listen", "localhost:8000", "[s] tty-server address")
+	listenAddress := flag.String("listen", "localhost:8000", "[s] tty-server address, \"localhost:0\" to allocate a free port")
 	versionFlag := flag.Bool("version", false, "Print the tty-share version")
 	frontendPath := flag.String("frontend-path", "", "[s] The path to the frontend resources. By default, these resources are included in the server binary, so you only need this path if you don't want to use the bundled ones.")
 	proxyServerAddress := flag.String("tty-proxy", "on.tty-share.com:4567", "[s] Address of the proxy for public facing connections")
@@ -147,6 +148,16 @@ Flags:
 		os.Exit(1)
 	}
 
+	// allocate a free port if port is zero
+	listener, err := net.Listen("tcp", *listenAddress)
+	if err != nil {
+		log.Errorf("Can't listen on %s: %s\n", *listenAddress, err.Error())
+		return
+	}
+
+	defer listener.Close()
+	*listenAddress = listener.Addr().String()
+
 	sessionID := ""
 	publicURL := ""
 	if *publicSession {
@@ -175,7 +186,7 @@ Flags:
 	}
 
 	ptyMaster := ptyMasterNew(*headless, *headlessCols, *headlessRows)
-	err := ptyMaster.Start(*commandName, strings.Fields(*commandArgs), envVars)
+	err = ptyMaster.Start(*commandName, strings.Fields(*commandArgs), envVars)
 	if err != nil {
 		log.Errorf("Cannot start the %s command: %s", *commandName, err.Error())
 		return
@@ -214,7 +225,7 @@ Flags:
 		pty = &nilPTY{}
 	}
 
-	server := createServer(*listenAddress, *frontendPath, pty, sessionID, *allowTunneling, *crossOrgin, sanitizedBaseUrlPath, *greetTimeout, *seats)
+	server := createServer(listener, *frontendPath, pty, sessionID, *allowTunneling, *crossOrgin, sanitizedBaseUrlPath, *greetTimeout, *seats)
 	if cols, rows, e := ptyMaster.GetWinSize(); e == nil {
 		server.WindowSize(cols, rows)
 	}

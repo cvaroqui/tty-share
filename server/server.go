@@ -37,15 +37,15 @@ type AASessionTemplateModel struct {
 
 // TTYServerConfig is used to configure the tty server before it is started
 type TTYServerConfig struct {
-	FrontListenAddress string
-	FrontendPath       string
-	PTY                PTYHandler
-	SessionID          string
-	AllowTunneling     bool
-	CrossOrigin        bool
-	BaseUrlPath        string
-	GreetTimeout       time.Duration
-	Seats              int
+	FrontListener  net.Listener
+	FrontendPath   string
+	PTY            PTYHandler
+	SessionID      string
+	AllowTunneling bool
+	CrossOrigin    bool
+	BaseUrlPath    string
+	GreetTimeout   time.Duration
+	Seats          int
 }
 
 // TTYServer represents the instance of a tty server
@@ -93,9 +93,7 @@ func NewTTYServer(config TTYServerConfig) (server *TTYServer) {
 	server = &TTYServer{
 		config: config,
 	}
-	server.httpServer = &http.Server{
-		Addr: config.FrontListenAddress,
-	}
+	server.httpServer = &http.Server{}
 	routesHandler := mux.NewRouter()
 
 	installHandlers := func(session string) {
@@ -321,7 +319,7 @@ func (server *TTYServer) Run() (err error) {
 			}
 		})
 	}
-	err = server.httpServer.ListenAndServe()
+	err = server.httpServer.Serve(server.config.FrontListener)
 	log.Debug("Server finished")
 	return
 }
