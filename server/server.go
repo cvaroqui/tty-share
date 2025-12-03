@@ -168,7 +168,7 @@ func (server *TTYServer) handleTTYWebsocket(w http.ResponseWriter, r *http.Reque
 		log.Warnf("No longer accepting clients")
 		return
 	default:
-		if server.session.ttyProtoConnections.Len() >= server.config.Seats {
+		if server.session.ttyProtoConnectionsLen() >= server.config.Seats {
 			log.Warnf("All seats used (%d)", server.config.Seats)
 			return
 		}
@@ -201,7 +201,7 @@ func (server *TTYServer) handleTTYWebsocket(w http.ResponseWriter, r *http.Reque
 
 	// When a connection ends, close the server if
 	// there are no more connections and we can't accept new ones.
-	if server.config.Seats < 0 && server.session.ttyProtoConnections.Len() == 0 {
+	if server.config.Seats < 0 && server.session.ttyProtoConnectionsLen() == 0 {
 		server.httpServer.Close()
 	}
 }
@@ -311,7 +311,7 @@ func (server *TTYServer) handleWithTemplateHtml(responseWriter http.ResponseWrit
 func (server *TTYServer) Run() (err error) {
 	if server.config.GreetTimeout > 0 {
 		time.AfterFunc(server.config.GreetTimeout, func() {
-			if server.session.ttyProtoConnections.Len() == 0 {
+			if server.session.ttyProtoConnectionsLen() == 0 {
 				server.Stop()
 			} else {
 				// stop accepting new connections
